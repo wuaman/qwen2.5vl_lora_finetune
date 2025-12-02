@@ -1,0 +1,28 @@
+{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python 调试程序: 包含参数的当前文件",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "--model_path", "./MonkeyOCR/Recognition",
+                "--train_data_path", "monkey_data/train_data.json",
+                "--output_dir", "./output/Qwen2.5-VL-MonkeyOCR",
+                "--per_device_train_batch_size", "4",
+                "--gradient_accumulation_steps", "4",
+                "--num_train_epochs", "2",
+                "--learning_rate", "1e-4",
+                "--lora_rank", "4",
+                "--lora_alpha", "4",
+                "--lora_dropout", "0.05",
+                "--gradient_checkpointing"
+            ]
+        }
+    ]
+}
