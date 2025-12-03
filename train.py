@@ -1,13 +1,10 @@
 import argparse
-import json
 
 from accelerate import Accelerator
 from datasets import Dataset
-from modelscope import AutoTokenizer, snapshot_download
-from peft import LoraConfig, PeftModel, TaskType, get_peft_model
+from modelscope import AutoTokenizer
+from peft import LoraConfig, TaskType, get_peft_model
 from qwen_vl_utils import process_vision_info
-import swanlab
-from swanlab.integration.transformers import SwanLabCallback
 import torch
 from transformers import (
 	AutoProcessor,

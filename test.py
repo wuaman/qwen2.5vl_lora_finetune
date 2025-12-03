@@ -1,19 +1,12 @@
 import json
 import pathlib
 
-from datasets import Dataset
-from modelscope import AutoTokenizer, snapshot_download
-from peft import LoraConfig, PeftModel, TaskType, get_peft_model
+from modelscope import AutoTokenizer
+from peft import LoraConfig, PeftModel, TaskType
 from qwen_vl_utils import process_vision_info
-import swanlab
-from swanlab.integration.transformers import SwanLabCallback
-import torch
 from transformers import (
 	AutoProcessor,
-	DataCollatorForSeq2Seq,
 	Qwen2_5_VLForConditionalGeneration,
-	Trainer,
-	TrainingArguments,
 )
 
 

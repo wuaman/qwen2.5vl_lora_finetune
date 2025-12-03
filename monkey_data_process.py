@@ -1,9 +1,7 @@
 import json
-import os
 from pathlib import Path
 from typing import Any, Optional
 
-import numpy as np
 from PIL import Image
 
 # 定义三个提示词

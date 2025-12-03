@@ -1,16 +1,13 @@
-from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor
-from qwen_vl_utils import process_vision_info
-import torch
 import time
 
+from qwen_vl_utils import process_vision_info
+from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
 
-model_path = "./Qwen2.5-VL-7B-Instruct"
-img_path = "./demo.jpeg"
+model_path = './Qwen2.5-VL-7B-Instruct'
+img_path = './demo.jpeg'
 
 # default: Load the model on the available device(s)
-model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-    model_path, torch_dtype="auto", device_map="auto"
-)
+model = Qwen2_5_VLForConditionalGeneration.from_pretrained(model_path, torch_dtype='auto', device_map='auto')
 
 # We recommend enabling flash_attention_2 for better acceleration and memory saving, especially in multi-image and video scenarios.
 # model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
@@ -30,29 +27,27 @@ processor = AutoProcessor.from_pretrained(model_path)
 # processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-7B-Instruct", min_pixels=min_pixels, max_pixels=max_pixels)
 
 messages = [
-    {
-        "role": "user",
-        "content": [
-            {
-                "type": "image",
-                "image": img_path,
-            },
-            {"type": "text", "text": "Describe this image."},
-        ],
-    }
+	{
+		'role': 'user',
+		'content': [
+			{
+				'type': 'image',
+				'image': img_path,
+			},
+			{'type': 'text', 'text': 'Describe this image.'},
+		],
+	}
 ]
 
 # Preparation for inference
-text = processor.apply_chat_template(
-    messages, tokenize=False, add_generation_prompt=True
-)
+text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 image_inputs, video_inputs = process_vision_info(messages)
 inputs = processor(
-    text=[text],
-    images=image_inputs,
-    videos=video_inputs,
-    padding=True,
-    return_tensors="pt",
+	text=[text],
+	images=image_inputs,
+	videos=video_inputs,
+	padding=True,
+	return_tensors='pt',
 )
 inputs = inputs.to(model.device)
 # inputs = inputs.to(dtype=model.dtype)
@@ -60,13 +55,11 @@ inputs = inputs.to(model.device)
 start = time.time()
 # Inference: Generation of the output
 generated_ids = model.generate(**inputs, max_new_tokens=256)
-generated_ids_trimmed = [
-    out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
-]
+generated_ids_trimmed = [out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)]
 output_text = processor.batch_decode(
-    generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
+	generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
 )
 print(output_text)
 
 end = time.time()
-print(f"\n\n耗时: {end - start:.4f} 秒\n")  # 保留4位小数
+print(f'\n\n耗时: {end - start:.4f} 秒\n')  # 保留4位小数
