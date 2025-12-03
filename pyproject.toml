@@ -83,6 +83,7 @@ extend-exclude = [
     "build",
     "dist",
     "notebooks",
+    "qwen-vl-finetune",
 ]
 
 # ==============================
@@ -98,19 +99,17 @@ select = [
     "C4",
     "TID",
     "ARG",
-    "PTH",
+    "PTH", # 路径问题, Path VS os.path
 ]
 
 # --- 更新：添加 F401 (忽略未使用的导入) ---
 # E501: 行长交给 formatter
 # D: 忽略文档缺失
-# F401: 忽略未使用的 import
 ignore = [
     "E501", 
     "D", 
-    "F401" ,
-    "W191",
-    "W293",
+    "W191", # 检测缩进使用的是制表符tab
+
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -143,22 +142,3 @@ docstring-code-format = true
 # 保持默认（兼容 Black 的逗号行为）
 skip-magic-trailing-comma = false
 
-# ==============================
-# 🔤 Pyright 配置
-# ==============================
-[tool.pyright]
-typeCheckingMode = "basic"
-pythonVersion = "3.9"
-include = ["src", "tests"]
-exclude = [
-    "**/node_modules",
-    "**/__pycache__",
-    ".venv",
-    "venv",
-    "build",
-    "dist",
-    "notebooks",
-]
-reportMissingTypeStubs = "none"
-reportUnusedImport = "warning"
-reportUnusedVariable = "warning"
