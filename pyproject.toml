@@ -1,0 +1,164 @@
+[build-system]
+# 打包分发依赖，一般用不到，除非需要打包wheel文件
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+# ==============================
+# 📦 Setuptools 配置
+# ==============================
+[tool.setuptools]
+# 这是一个训练脚本项目，不包含可安装的包
+packages = []
+
+
+[project]
+name = "Qwen2.5-VL-MonkeyOCR-finetune"
+version = "0.1.0"
+description = "Qwen2.5-VL-MonkeyOCR LoRA Training Script"
+readme = "README.md"
+authors = [
+    { name = "wuaman", email = "aman1239023286@gmail.com" },
+]
+dependencies = [
+    "torch==2.8.0",
+    "transformers==4.57.1",
+    "accelerate==1.10.1",
+    "datasets==4.4.1",
+    "peft==0.17.1",
+    "swanlab==0.6.13",
+    "qwen-vl-utils==0.0.14",
+    "pandas==2.3.3",
+    "numpy==2.0.2",
+    "torchvision==0.23.0",
+    "modelscope==1.31.0",
+]
+requires-python = ">=3.9"
+
+
+[project.urls]
+Repository = "https://github.com/wuaman/Qwen2.5-VL-MonkeyOCR-finetune"
+
+
+
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[[tool.uv.index]]
+name = "tsinghua"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+explicit = false
+
+[[tool.uv.index]]
+name = "aliyun"
+url = "https://mirrors.aliyun.com/pypi/simple"
+explicit = false
+# ==============================
+# 🛠️ Ruff 全局配置
+# ==============================
+[tool.ruff]
+# 启用预览功能
+preview = true
+
+# 目标 Python 版本
+target-version = "py39"
+
+# 自动修复
+fix = true
+unsafe-fixes = false
+
+# --- 更新：行长修改为 120 ---
+line-length = 120
+
+# 缩进宽度（视觉宽度为4，具体用tab还是空格由 format 决定）
+indent-width = 4
+
+# 忽略的路径
+extend-exclude = [
+    ".git",
+    "__pycache__",
+    "venv",
+    ".venv",
+    "build",
+    "dist",
+    "notebooks",
+]
+
+# ==============================
+# 🔍 Lint 规则配置
+# ==============================
+[tool.ruff.lint]
+# 启用的规则集
+# 我保留了之前较全的列表，因为它已经包含了你要求的 F, E, W, UP
+select = [
+    "E", "W", "F",
+    "I",
+    "UP",
+    "C4",
+    "TID",
+    "ARG",
+    "PTH",
+]
+
+# --- 更新：添加 F401 (忽略未使用的导入) ---
+# E501: 行长交给 formatter
+# D: 忽略文档缺失
+# F401: 忽略未使用的 import
+ignore = [
+    "E501", 
+    "D", 
+    "F401" ,
+    "W191",
+    "W293",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**.py" = ["S101", "ARG", "PLR0913"]
+"scripts/*.py" = ["T20"]
+
+# ==============================
+# 🧹 isort 配置
+# ==============================
+[tool.ruff.lint.isort]
+known-first-party = ["my_project"]
+combine-as-imports = true
+force-sort-within-sections = true
+
+# ==============================
+# ✨ Formatter 配置
+# ==============================
+[tool.ruff.format]
+preview = true
+
+# 使用单引号
+quote-style = "single"
+
+# --- 更新：缩进使用 Tab ---
+indent-style = "tab"
+
+# --- 更新：启用 docstring 代码块格式化 ---
+docstring-code-format = true
+
+# 保持默认（兼容 Black 的逗号行为）
+skip-magic-trailing-comma = false
+
+# ==============================
+# 🔤 Pyright 配置
+# ==============================
+[tool.pyright]
+typeCheckingMode = "basic"
+pythonVersion = "3.9"
+include = ["src", "tests"]
+exclude = [
+    "**/node_modules",
+    "**/__pycache__",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+    "notebooks",
+]
+reportMissingTypeStubs = "none"
+reportUnusedImport = "warning"
+reportUnusedVariable = "warning"
