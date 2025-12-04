@@ -1,7 +1,5 @@
 import argparse
-import glob
 import json
-import os
 import pathlib
 
 from datasets import Dataset
@@ -76,7 +74,7 @@ def process_func(example, processor, tokenizer):
 	)
 
 	# 转换为list以便拼接
-	inputs = {key: value.tolist() for key, value in inputs.items()}  # TODO 查看inputs结构，重新调试一遍
+	inputs = {key: value.tolist() for key, value in inputs.items()}
 	instruction = inputs
 
 	# 处理输出内容
@@ -178,9 +176,7 @@ if __name__ == '__main__':
 
 	# 加载tokenizer和processor
 	print(f'Loading tokenizer and processor from {args.model_path}')
-	tokenizer = AutoTokenizer.from_pretrained(
-		args.model_path, use_fast=False, trust_remote_code=True
-	)  # TODO 如何区分加载的是tokenizer还是processor，要看源码
+	tokenizer = AutoTokenizer.from_pretrained(args.model_path, use_fast=False, trust_remote_code=True)
 	processor = AutoProcessor.from_pretrained(args.model_path)
 
 	# 加载模型

@@ -265,14 +265,14 @@ def batch_convert_monkeyocr_data(
 	Returns:
 		所有转换后的训练样本列表
 	"""
-	label_dir = Path(label_dir)
+	label_dir_path = Path(label_dir)
 	all_samples = []
 
 	# 查找所有JSON文件
-	json_files = list(label_dir.glob('*.json'))
+	json_files = list(label_dir_path.glob('*.json'))
 
 	if not json_files:
-		print(f'No JSON files found in {label_dir}')
+		print(f'No JSON files found in {label_dir_path}')
 		return []
 
 	print(f'Found {len(json_files)} JSON files to process')
