@@ -270,7 +270,6 @@ def main():
 		args.lora_rank,
 		args.lora_alpha,
 		args.lora_dropout,
-		args.device,
 	)
 
 	# 收集图片路径

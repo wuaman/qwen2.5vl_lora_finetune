@@ -15,8 +15,4 @@
   "editor.insertSpaces": false,
   "editor.tabSize": 4,
   "editor.detectIndentation": false,
-  "python.analysis.typeCheckingMode": "basic",
-  "python.analysis.autoImportCompletions": true,
-  "python.analysis.useLibraryCodeForTypes": true
-
 }

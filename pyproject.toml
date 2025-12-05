@@ -142,14 +142,14 @@ docstring-code-format = true
 # 保持默认（兼容 Black 的逗号行为）
 skip-magic-trailing-comma = false
 
-[tool.pyright]
-typeCheckingMode = "basic"
+# [tool.pyright]
+# typeCheckingMode = "basic"
 
-exclude = [
-  "qwen-vl-finetune",
-  "venv",
-  ".venv",
-]
-reportArgumentType = false
-reportGeneralTypeIssues = false
-reportAttributeAccessIssue = false
+# exclude = [
+#   "qwen-vl-finetune",
+#   "venv",
+#   ".venv",
+# ]
+# reportArgumentType = false
+# reportGeneralTypeIssues = false
+# reportAttributeAccessIssue = false
