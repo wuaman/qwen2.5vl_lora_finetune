@@ -50,8 +50,8 @@ def process_func(example, processor, tokenizer):
 				{
 					'type': 'image',
 					'image': file_path,
-					'resized_height': 280,  # TODO 需要查看monkeyOCR中的图像resize策略
-					'resized_width': 280,
+					# 'resized_height': 280,
+					# 'resized_width': 280,
 				},
 				{'type': 'text', 'text': instruction_text},
 			],

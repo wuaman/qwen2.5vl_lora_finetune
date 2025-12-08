@@ -80,10 +80,14 @@ extend-exclude = [
     "__pycache__",
     "venv",
     ".venv",
-    "build",
-    "dist",
-    "notebooks",
-    "qwen-vl-finetune",
+    "coco_2014",
+	"MonkeyOCR",
+	"monkey_data",
+	"output",
+	".vscode",
+	"Qwen",
+	"qwen-vl-finetune",
+	"Qwen2.5-VL-MonkeyOCR-finetune.egg-info",
 ]
 
 # ==============================
