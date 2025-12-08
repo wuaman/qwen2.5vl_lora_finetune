@@ -31,7 +31,10 @@ dependencies = [
     "torchvision==0.23.0",
     "modelscope==1.31.0",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.12"
+
+[tool.uv]
+python-install-mirror = "https://ghfast.top/https://github.com/astral-sh/python-build-standalone/releases/download"
 
 
 [project.urls]
@@ -62,7 +65,7 @@ explicit = false
 preview = true
 
 # 目标 Python 版本
-target-version = "py39"
+target-version = "py312"
 
 # 自动修复
 fix = true
