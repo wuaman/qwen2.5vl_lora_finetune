@@ -62,9 +62,36 @@ def find_latest_checkpoint(checkpoint_dir):
 	checkpoint_paths = list(pathlib.Path(checkpoint_dir).glob('checkpoint-*'))
 	if not checkpoint_paths:
 		raise ValueError(f'No checkpoint found in {checkpoint_dir}!')
+	# 分离数字和非数字后缀的checkpoint
+	numeric_checkpoints = []
+	non_numeric_checkpoints = []
 
-	latest_checkpoint = max(checkpoint_paths, key=lambda x: int(x.name.split('-')[-1]))
-	return latest_checkpoint
+	for checkpoint_path in checkpoint_paths:
+		suffix = checkpoint_path.name.split('-')[-1]
+		try:
+			# 尝试转换为数字
+			num = int(suffix)
+			numeric_checkpoints.append((num, checkpoint_path))
+		except ValueError:
+			# 非数字后缀（如 'best', 'last'）
+			non_numeric_checkpoints.append(checkpoint_path)
+
+	# 优先选择特殊标记的checkpoint（如 checkpoint-best, checkpoint-last）
+	# 这些通常表示最佳或最后的checkpoint
+	if non_numeric_checkpoints:
+		# 优先选择 'best'，其次是 'last'，最后是其他
+		priority_order = ['best', 'last']
+		for priority in priority_order:
+			for checkpoint in non_numeric_checkpoints:
+				if checkpoint.name.endswith(f'-{priority}'):
+					return checkpoint
+		# 如果没有找到优先的，返回第一个非数字checkpoint
+		return non_numeric_checkpoints[0]
+
+	# 如果没有特殊checkpoint，选择数字最大的
+	if numeric_checkpoints:
+		numeric_checkpoints.sort(key=lambda x: x[0], reverse=True)
+		return numeric_checkpoints[0][1]
 
 
 if __name__ == '__main__':
