@@ -1,114 +1,179 @@
 import argparse
+from collections.abc import Sequence
+from dataclasses import dataclass
 import json
 import pathlib
 
-from datasets import Dataset
 from modelscope import AutoTokenizer
 from peft import LoraConfig, PeftModel, TaskType, get_peft_model
 from qwen_vl_utils import process_vision_info
 import torch
+from torch.utils.data import Dataset
 from transformers import (
 	AutoProcessor,
-	DataCollatorForSeq2Seq,
 	Qwen2_5_VLForConditionalGeneration,
 	Trainer,
 	TrainingArguments,
 )
 
+IGNORE_INDEX = -100
 
-def process_func(example, processor, tokenizer):
-	"""
-	将数据集进行预处理（MonkeyOCR格式）
 
-	Args:
-	example: 数据样本，包含conversations字段
-	processor: AutoProcessor实例
-	tokenizer: AutoTokenizer实例
+class Qwen2_5_VL_Dataset(Dataset):
+	"""Qwen2.5-VL 数据集类，用于加载和预处理 MonkeyOCR 格式的训练数据"""
 
-	Returns:
-	处理后的数据字典
-	"""
-	MAX_LENGTH = 8192
+	def __init__(self, data_path: str, processor, tokenizer, max_length: int = 8192):
+		"""
+		初始化数据集
 
-	conversation = example['conversations']
-	input_content = conversation[0]['value']  # user输入
-	output_content = conversation[1]['value']  # assistant输出
+		Args:
+			data_path: JSON 数据文件路径
+			processor: AutoProcessor 实例
+			tokenizer: AutoTokenizer 实例
+			max_length: 最大序列长度
+		"""
+		self.processor = processor
+		self.tokenizer = tokenizer
+		self.max_length = max_length
 
-	# 解析输入内容：格式为 "instruction <|vision_start|>image_path<|vision_end|>"
-	if '<|vision_start|>' not in input_content or '<|vision_end|>' not in input_content:
-		raise ValueError(f'Invalid input format: {input_content}')
+		# 加载 JSON 数据
+		with pathlib.Path(data_path).open(encoding='utf-8') as f:
+			self.data = json.load(f)
 
-	parts = input_content.split('<|vision_start|>')
-	instruction_text = parts[0].strip()  # instruction部分
-	file_path = parts[1].split('<|vision_end|>')[0].strip()  # 图像路径
+	def __len__(self) -> int:
+		return len(self.data)
 
-	# 构建messages格式
-	messages = [
-		{
-			'role': 'user',
-			'content': [
-				{
-					'type': 'image',
-					'image': file_path,
-					# 'resized_height': 280,
-					# 'resized_width': 280,
-				},
-				{'type': 'text', 'text': instruction_text},
-			],
+	def __getitem__(self, idx: int) -> dict[str, torch.Tensor]:
+		"""
+		获取单个样本并进行预处理
+
+		Args:
+			idx: 样本索引
+
+		Returns:
+			处理后的数据字典
+		"""
+		example = self.data[idx]
+		conversation = example['conversations']
+		input_content = conversation[0]['value']  # user输入
+		output_content = conversation[1]['value']  # assistant输出
+
+		# 解析输入内容：格式为 "instruction <|vision_start|>image_path<|vision_end|>"
+		if '<|vision_start|>' not in input_content or '<|vision_end|>' not in input_content:
+			raise ValueError(f'Invalid input format: {input_content}')
+
+		parts = input_content.split('<|vision_start|>')
+		instruction_text = parts[0].strip()  # instruction部分
+		file_path = parts[1].split('<|vision_end|>')[0].strip()  # 图像路径
+
+		# 构建messages格式
+		messages = [
+			{
+				'role': 'user',
+				'content': [
+					{
+						'type': 'image',
+						'image': file_path,
+					},
+					{'type': 'text', 'text': instruction_text},
+				],
+			}
+		]
+
+		# 应用chat template获取文本
+		text = self.processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+
+		# 处理视觉信息
+		image_inputs, video_inputs = process_vision_info(messages)
+
+		# 使用processor处理输入
+		inputs = self.processor(
+			text=[text],
+			images=image_inputs,
+			videos=video_inputs,
+			padding=True,
+			return_tensors='pt',
+			do_resize=False,
+		)
+
+		# 转换为list以便拼接
+		inputs = {key: value.tolist() for key, value in inputs.items()}
+		instruction = inputs
+
+		# 处理输出内容
+		response = self.tokenizer(f'{output_content}', add_special_tokens=False)
+
+		# 拼接input_ids
+		input_ids = instruction['input_ids'][0] + response['input_ids'] + [self.tokenizer.pad_token_id]
+
+		# 构建labels（instruction部分用-100掩码，只计算response部分的loss）
+		labels = (
+			[IGNORE_INDEX] * len(instruction['input_ids'][0]) + response['input_ids'] + [self.tokenizer.pad_token_id]
+		)
+
+		# 截断到最大长度
+		if len(input_ids) > self.max_length:
+			input_ids = input_ids[: self.max_length]
+			labels = labels[: self.max_length]
+
+		# 转换为tensor
+		input_ids = torch.tensor(input_ids)
+		labels = torch.tensor(labels)
+		pixel_values = torch.tensor(inputs['pixel_values'])
+		image_grid_thw = torch.tensor(inputs['image_grid_thw'])
+
+		return {
+			'input_ids': input_ids,
+			'labels': labels,
+			'pixel_values': pixel_values,
+			'image_grid_thw': image_grid_thw,
 		}
-	]
 
-	# 应用chat template获取文本
-	text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 
-	# 处理视觉信息
-	image_inputs, video_inputs = process_vision_info(messages)
+@dataclass
+class Qwen2_5_VL_DataCollator:
+	"""Qwen2.5-VL 数据整理器，用于批量处理数据"""
 
-	# 使用processor处理输入
-	inputs = processor(
-		text=[text],
-		images=image_inputs,
-		videos=video_inputs,
-		padding=True,
-		return_tensors='pt',
-	)
+	tokenizer: object
 
-	# 转换为list以便拼接
-	inputs = {key: value.tolist() for key, value in inputs.items()}
-	instruction = inputs
+	def __call__(self, instances: Sequence[dict]) -> dict[str, torch.Tensor]:
+		"""
+		整理批量数据
 
-	# 处理输出内容
-	response = tokenizer(f'{output_content}', add_special_tokens=False)
+		Args:
+			instances: 批量样本列表
 
-	# 拼接input_ids
-	input_ids = instruction['input_ids'][0] + response['input_ids'] + [tokenizer.pad_token_id]
+		Returns:
+			整理后的批量数据字典
+		"""
+		# 提取 input_ids 和 labels
+		input_ids, labels = tuple([instance[key] for instance in instances] for key in ('input_ids', 'labels'))
 
-	# 拼接attention_mask
-	attention_mask = instruction['attention_mask'][0] + response['attention_mask'] + [1]
+		# 使用 pad_sequence 进行 padding
+		input_ids = torch.nn.utils.rnn.pad_sequence(
+			input_ids, batch_first=True, padding_value=self.tokenizer.pad_token_id
+		)
+		labels = torch.nn.utils.rnn.pad_sequence(labels, batch_first=True, padding_value=IGNORE_INDEX)
 
-	# 构建labels（instruction部分用-100掩码，只计算response部分的loss）
-	labels = [-100] * len(instruction['input_ids'][0]) + response['input_ids'] + [tokenizer.pad_token_id]
+		# 动态生成 attention_mask
+		attention_mask = input_ids.ne(self.tokenizer.pad_token_id)
 
-	# 截断到最大长度
-	if len(input_ids) > MAX_LENGTH:
-		input_ids = input_ids[:MAX_LENGTH]
-		attention_mask = attention_mask[:MAX_LENGTH]
-		labels = labels[:MAX_LENGTH]
+		# 处理视觉输入
+		images = [inst['pixel_values'] for inst in instances if 'pixel_values' in inst]
+		if len(images) != 0:
+			concat_images = torch.cat(images, dim=0)
+			grid_thw = torch.cat([inst['image_grid_thw'] for inst in instances if 'image_grid_thw' in inst], dim=0)
+		else:
+			concat_images = None
+			grid_thw = None
 
-	# 转换为tensor
-	input_ids = torch.tensor(input_ids)
-	attention_mask = torch.tensor(attention_mask)
-	labels = torch.tensor(labels)
-	inputs['pixel_values'] = torch.tensor(inputs['pixel_values'])
-	inputs['image_grid_thw'] = torch.tensor(inputs['image_grid_thw']).squeeze(0)  # 由(1,h,w)变换为(h,w)
-
-	return {
-		'input_ids': input_ids,
-		'attention_mask': attention_mask,
-		'labels': labels,
-		'pixel_values': inputs['pixel_values'],
-		'image_grid_thw': inputs['image_grid_thw'],
-	}
+		return {
+			'input_ids': input_ids,
+			'labels': labels,
+			'attention_mask': attention_mask,
+			'pixel_values': concat_images,
+			'image_grid_thw': grid_thw,
+		}
 
 
 def predict(messages, model, processor):
@@ -192,13 +257,11 @@ if __name__ == '__main__':
 
 	# 加载训练数据
 	print(f'Loading training data from {args.train_data_path}')
-	train_ds = Dataset.from_json(args.train_data_path)
-
-	# 处理数据（需要传入processor和tokenizer）
-	def process_example(example):
-		return process_func(example, processor, tokenizer)
-
-	train_dataset = train_ds.map(process_example)
+	train_dataset = Qwen2_5_VL_Dataset(
+		data_path=args.train_data_path,
+		processor=processor,
+		tokenizer=tokenizer,
+	)
 
 	# 配置LoRA
 	config = LoraConfig(
@@ -232,11 +295,12 @@ if __name__ == '__main__':
 	)
 
 	# 配置Trainer
+	data_collator = Qwen2_5_VL_DataCollator(tokenizer=tokenizer)
 	trainer = Trainer(
 		model=peft_model,
 		args=training_args,
 		train_dataset=train_dataset,
-		data_collator=DataCollatorForSeq2Seq(tokenizer=tokenizer, padding=True),
+		data_collator=data_collator,
 	)
 
 	# 开始训练
